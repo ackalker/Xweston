@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# dummy-client - Weston shell client that does nothing
+# but send a signal to Xweston when Weston is ready
+
+# Get name of our parent
+parent_comm=$(ps -o comm= -p $PPID)
+
+# Workaround for long startup delay
+if [ ! -f "$XDG_RUNTIME_DIR/dummy-client.lock" ]; then
+	touch "$XDG_RUNTIME_DIR/dummy-client.lock"
+
+	# Try to eliminate the delay by allowing weston to respawn us, but only once
+	exit 1
+else
+	rm -f "$XDG_RUNTIME_DIR/dummy-client.lock"
+
+	if [ -f "$XDG_RUNTIME_DIR/Xweston.pid" ]; then
+		# Signal Xweston that Weston is ready for connections
+		read xweston_pid < "$XDG_RUNTIME_DIR/Xweston.pid"
+		kill -USR2 $xweston_pid
+	else
+		echo "dummy-client: Xweston isn't ready"
+		if [ "$parent_comm" = "weston" ]; then
+			echo "dummy-client: shutting down weston"
+			kill -TERM $PPID
+
+			# If we exit before weston, it could respawn us. Give it some time
+			sleep 1
+		fi
+		exit 1
+	fi
+fi
+
+# Don't let weston respawn us
+exec sleep infinity

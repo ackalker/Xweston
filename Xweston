@@ -1,0 +1,62 @@
+#!/bin/sh
+
+# Xweston - launch Xwayland hosted by weston
+
+# Initialize options
+ourpid=$$
+ourdisplay=:0
+ourtty=$(tty)
+weston_opts=$WESTON_OPTS
+
+# Parse commandline arguments
+for opt; do
+	case $opt in
+		:[0-9]*) ourdisplay=$opt
+						;;
+		vt[0-9]*) ourtty=/dev/tty${opt#vt}
+						weston_opts=--tty=${ourtty#/dev/tty}
+						continue
+						;;
+		-novtswitch) # Not supported by Xweston, ignore
+						continue
+	 					;;
+	esac
+	xwayland_opts="$xwayland_opts $opt"
+done
+
+# Experimental X display manager support
+if [ $UID -eq 0 ]; then
+	# FIXME: figure out the correct value for XDG_RUNTIME_DIR if the 
+	#        display manager does not provide one
+	export XDG_RUNTIME_DIR=/tmp/.Xweston/$ourdisplay
+	mkdir -p "$XDG_RUNTIME_DIR"
+	chmod 0700 "$XDG_RUNTIME_DIR"
+fi
+
+# dummy-client will signal us when weston is ready for connections
+echo $ourpid > "$XDG_RUNTIME_DIR/Xweston.pid"
+
+# Setup signal handler
+# The handler is a no-op, actual processing is done after `wait` below
+trap : USR2
+
+# Launch Weston
+(
+	# Set XDG_CONFIG_HOME (highest priority) for loading our weston.ini
+	export XDG_CONFIG_HOME=/usr/lib/Xweston
+
+	# Choose which Weston launcher to use
+	if [ $UID -ne 0 ] && [ -z "$DISPLAY" ]; then
+		exec weston-launch $weston_launch_opts -- $weston_opts < $ourtty
+	else
+		exec weston $weston_opts
+	fi
+) &
+
+# Wait for signal from dummy-client
+wait
+rm -f "$XDG_RUNTIME_DIR/dummy-client.lock"
+rm -f "$XDG_RUNTIME_DIR/Xweston.pid"
+
+# All done, start Xwayland, letting it handle any further errors
+exec Xwayland $xwayland_opts

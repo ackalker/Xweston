@@ -1,0 +1,2 @@
+[shell]
+client=@clientdir@/dummy-client
