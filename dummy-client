@@ -3,33 +3,56 @@
 # dummy-client - Weston shell client that does nothing
 # but send a signal to Xweston when Weston is ready
 
-# Get name of our parent
-parent_comm=$(ps -o comm= -p $PPID)
+PROGNAME=$(basename "$0")
+
+# Find ancestor process given its process name and a starting PID
+# Return PID if found, 0 if not found
+find_ancestor() {
+	local name pid
+	name=$1
+	pid=$2
+	while [ $pid -ne 0 ]; do
+		set -- $(ps -o comm= -o ppid= -p $pid)
+		[ "$1" = "$name" ] && break
+		pid=$2
+	done
+	echo $pid
+}
+
+error() {
+	echo "$PROGNAME: Error: $1" >&2
+}
+
+# Exit with error if not running under weston (perhaps we were orphaned)
+weston_pid=$(find_ancestor "weston" $$)
+if [ $weston_pid -eq 0 ]; then
+	error "not running under weston"
+	exit 1
+fi
 
 # Workaround for long startup delay
-if [ ! -f "$XDG_RUNTIME_DIR/dummy-client.lock" ]; then
-	touch "$XDG_RUNTIME_DIR/dummy-client.lock"
+lockfile=$XDG_RUNTIME_DIR/dummy-client-${parent_pid}.lock
+if [ ! -f "$lockfile" ]; then
+	touch "$lockfile"
 
 	# Try to eliminate the delay by allowing weston to respawn us, but only once
 	exit 1
 else
-	rm -f "$XDG_RUNTIME_DIR/dummy-client.lock"
+	rm -f "$lockfile"
 
-	if [ -f "$XDG_RUNTIME_DIR/Xweston.pid" ]; then
-		# Signal Xweston that Weston is ready for connections
-		read xweston_pid < "$XDG_RUNTIME_DIR/Xweston.pid"
-		kill -USR2 $xweston_pid
-	else
-		echo "dummy-client: Xweston isn't ready"
-		if [ "$parent_comm" = "weston" ]; then
-			echo "dummy-client: shutting down weston"
-			kill -TERM $PPID
-
-			# If we exit before weston, it could respawn us. Give it some time
-			sleep 1
-		fi
+	# Find PID of Xweston, exit with error if not found
+	xweston_pid=$(find_ancestor "Xweston" $weston_pid)
+	if [ $xweston_pid -eq 0 ]; then
+		error "not started by Xweston"
+		# Shutdown weston
+		kill -TERM $weston_pid
+		# If we exit before weston, we might be respawned. Give it some time
+		sleep 1
 		exit 1
 	fi
+
+	# Signal Xweston that weston is ready for connections
+	kill -USR2 $xweston_pid
 fi
 
 # Don't let weston respawn us

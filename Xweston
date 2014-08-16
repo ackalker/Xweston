@@ -3,7 +3,6 @@
 # Xweston - launch Xwayland hosted by weston
 
 # Initialize options
-ourpid=$$
 ourdisplay=:0
 ourtty=$(tty)
 weston_opts=$WESTON_OPTS
@@ -34,9 +33,6 @@ if [ $UID -eq 0 ]; then
 fi
 
 # dummy-client will signal us when weston is ready for connections
-echo $ourpid > "$XDG_RUNTIME_DIR/Xweston.pid"
-
-# Setup signal handler
 # The handler is a no-op, actual processing is done after `wait` below
 trap : USR2
 
@@ -55,8 +51,6 @@ trap : USR2
 
 # Wait for signal from dummy-client
 wait
-rm -f "$XDG_RUNTIME_DIR/dummy-client.lock"
-rm -f "$XDG_RUNTIME_DIR/Xweston.pid"
 
 # All done, start Xwayland, letting it handle any further errors
 exec Xwayland $xwayland_opts
