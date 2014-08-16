@@ -31,7 +31,7 @@ if [ $weston_pid -eq 0 ]; then
 fi
 
 # Workaround for long startup delay
-lockfile=$XDG_RUNTIME_DIR/dummy-client-${parent_pid}.lock
+lockfile=$XDG_RUNTIME_DIR/dummy-client-${weston_pid}.lock
 if [ ! -f "$lockfile" ]; then
 	touch "$lockfile"
 
