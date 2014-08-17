@@ -2,32 +2,35 @@
 
 # Xweston - launch Xwayland hosted by weston
 
-# Initialize options
-ourdisplay=:0
-ourtty=$(tty)
+# Initialize
+display=:0
+tty=$(tty)
 weston_opts=$WESTON_OPTS
+weston_launch_opts=$WESTON_LAUNCH_OPTS
+unset WESTON_OPTS WESTON_LAUNCH_OPTS
 
 # Parse commandline arguments
 for opt; do
 	case $opt in
-		:[0-9]*) ourdisplay=$opt
-						;;
-		vt[0-9]*) ourtty=/dev/tty${opt#vt}
-						weston_opts=--tty=${ourtty#/dev/tty}
-						continue
-						;;
-		-novtswitch) # Not supported by Xweston, ignore
-						continue
-	 					;;
+		:[0-9]*)
+			display=$opt
+			;;
+		vt[0-9]*)
+			tty=/dev/tty${opt#vt}
+			weston_opts=--tty=${tty#/dev/tty}
+			continue
+			;;
+		-novtswitch)
+			# Not supported by Xweston, ignore
+			continue
+			;;
 	esac
 	xwayland_opts="$xwayland_opts $opt"
 done
 
-# Experimental X display manager support
-if [ $UID -eq 0 ]; then
-	# FIXME: figure out the correct value for XDG_RUNTIME_DIR if the 
-	#        display manager does not provide one
-	export XDG_RUNTIME_DIR=/tmp/.Xweston/$ourdisplay
+# X session and display manager support
+if [ -z "$XDG_RUNTIME_DIR" ]; then
+	export XDG_RUNTIME_DIR=/tmp/.Xweston/$display
 	mkdir -p "$XDG_RUNTIME_DIR"
 	chmod 0700 "$XDG_RUNTIME_DIR"
 fi
@@ -36,14 +39,13 @@ fi
 # The handler is a no-op, actual processing is done after `wait` below
 trap : USR2
 
-# Launch Weston
+# Start weston
 (
-	# Set XDG_CONFIG_HOME (highest priority) for loading our weston.ini
+	# Set XDG_CONFIG_HOME (highest priority) for loading our custom weston.ini
 	export XDG_CONFIG_HOME=/usr/lib/Xweston
 
-	# Choose which Weston launcher to use
 	if [ $UID -ne 0 ] && [ -z "$DISPLAY" ]; then
-		exec weston-launch $weston_launch_opts -- $weston_opts < $ourtty
+		exec weston-launch $weston_launch_opts -- $weston_opts < $tty
 	else
 		exec weston $weston_opts
 	fi
@@ -52,5 +54,5 @@ trap : USR2
 # Wait for signal from dummy-client
 wait
 
-# All done, start Xwayland, letting it handle any further errors
+# All done, start Xwayland
 exec Xwayland $xwayland_opts
