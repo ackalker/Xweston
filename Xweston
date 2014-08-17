@@ -17,7 +17,7 @@ for opt; do
 			;;
 		vt[0-9]*)
 			tty=/dev/tty${opt#vt}
-			weston_opts=--tty=${tty#/dev/tty}
+			weston_opts="$weston_opts --tty=${tty#/dev/tty}"
 			continue
 			;;
 		-novtswitch)
