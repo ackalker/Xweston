@@ -1,2 +1,4 @@
 [shell]
 client=@clientdir@/dummy-client
+background-color=0xff000000
+panel-location=none
