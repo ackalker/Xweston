@@ -30,30 +30,19 @@ if [ $weston_pid -eq 0 ]; then
 	exit 1
 fi
 
-# Workaround for long startup delay
-lockfile=$XDG_RUNTIME_DIR/dummy-client-${weston_pid}.lock
-if [ ! -f "$lockfile" ]; then
-	touch "$lockfile"
-
-	# Try to eliminate the delay by allowing weston to respawn us, but only once
-	exit 1
-else
-	rm -f "$lockfile"
-
-	# Find PID of Xweston, exit with error if not found
-	xweston_pid=$(find_ancestor "Xweston" $weston_pid)
-	if [ $xweston_pid -eq 0 ]; then
+# Find PID of Xweston, exit with error if not found
+xweston_pid=$(find_ancestor "Xweston" $weston_pid)
+if [ $xweston_pid -eq 0 ]; then
 		error "not started by Xweston"
 		# Shutdown weston
 		kill -TERM $weston_pid
 		# If we exit before weston, we might be respawned. Give it some time
 		sleep 1
 		exit 1
-	fi
-
-	# Signal Xweston that weston is ready for connections
-	kill -USR2 $xweston_pid
 fi
 
-# Don't let weston respawn us
-exec sleep infinity
+# Signal Xweston that weston is ready for connections
+kill -USR2 $xweston_pid
+
+# Execute the real desktop shell
+exec /usr/lib/weston/weston-desktop-shell
