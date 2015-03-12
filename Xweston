@@ -11,28 +11,28 @@ unset WESTON_OPTS WESTON_LAUNCH_OPTS
 
 # Parse commandline arguments
 for opt; do
-	case $opt in
-		:[0-9]*)
-			display=$opt
-			;;
-		vt[0-9]*)
-			tty=/dev/tty${opt#vt}
-			weston_opts="$weston_opts --tty=${tty#/dev/tty}"
-			continue
-			;;
-		-novtswitch)
-			# Not supported by Xweston, ignore
-			continue
-			;;
-	esac
-	xwayland_opts="$xwayland_opts $opt"
+    case $opt in
+	:[0-9]*)
+	    display=$opt
+	    ;;
+	vt[0-9]*)
+	    tty=/dev/tty${opt#vt}
+	    weston_opts="$weston_opts --tty=${tty#/dev/tty}"
+	    continue
+	    ;;
+	-novtswitch)
+	    # Not supported by Xweston, ignore
+	    continue
+	    ;;
+    esac
+    xwayland_opts="$xwayland_opts $opt"
 done
 
 # X session and display manager support
 if [ -z "$XDG_RUNTIME_DIR" ]; then
-	export XDG_RUNTIME_DIR=/tmp/.Xweston/$display
-	mkdir -p "$XDG_RUNTIME_DIR"
-	chmod 0700 "$XDG_RUNTIME_DIR"
+    export XDG_RUNTIME_DIR=/tmp/.Xweston/$display
+    mkdir -p "$XDG_RUNTIME_DIR"
+    chmod 0700 "$XDG_RUNTIME_DIR"
 fi
 
 # dummy-client will signal us when weston is ready for connections
@@ -41,14 +41,14 @@ trap : USR2
 
 # Start weston
 (
-	# Set XDG_CONFIG_HOME (highest priority) for loading our custom weston.ini
-	export XDG_CONFIG_HOME=/usr/lib/Xweston
+    # Set XDG_CONFIG_HOME (highest priority) for loading our custom weston.ini
+    export XDG_CONFIG_HOME=/usr/lib/Xweston
 
-	if [ $UID -ne 0 ] && [ -z "$DISPLAY" ]; then
-		exec weston-launch $weston_launch_opts -- $weston_opts < $tty
-	else
-		exec weston $weston_opts
-	fi
+    if [ $UID -ne 0 ] && [ -z "$DISPLAY" ]; then
+	exec weston-launch $weston_launch_opts -- $weston_opts < $tty
+    else
+	exec weston $weston_opts
+    fi
 ) &
 
 # Wait for signal from dummy-client
