@@ -55,3 +55,8 @@ Its source code is hosted on Github: https://github.com/ackalker/Xweston
 
 Please feel free to report any issues, make feature requests or contribute
 to the Wiki.
+
+License
+-------
+
+Released under the MIT license. Copyright (c) 2014-2015 Alain Kalker.
